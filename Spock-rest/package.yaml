@@ -26,6 +26,10 @@ dependencies:
 - Spock
 - bytestring
 - regex
+- monad-logger
+- persistent
+- persistent-sqlite
+- persistent-template
 
 library:
   source-dirs: src

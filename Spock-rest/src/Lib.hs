@@ -1,7 +1,6 @@
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 module Lib
     ( verifyAndCreateEmployee
     , handler
@@ -9,12 +8,14 @@ module Lib
     , Response (..)
     ) where
 
+import Web.Spock hiding (body, head)
+import Web.Spock.Config
 import Text.RE.TDFA.String ((?=~), re, matched) --from the 'regex' package
 import Text.Read (readMaybe)
 import Text.Printf (printf)
 import Data.Char (isUpper)
 import Data.Either
-import Data.Aeson
+import Data.Aeson hiding (json)
 import Data.Aeson.Types
 import GHC.Generics
 import qualified Data.Text as T
@@ -25,12 +26,15 @@ data Employee = Employee
     { name :: String
     , age :: String
     , emailAddress :: String
-    } deriving (Show, Eq, ToJSON, FromJSON, Generic)
+    } deriving (Show, Eq, Generic)
+instance ToJSON Employee
+instance FromJSON Employee
 
 data Response = Response
     { statusCode:: Int
     , body :: String
-    } deriving (Generic, ToJSON, Show)
+    } deriving (Generic, Show)
+instance ToJSON Response
 
 handler :: BStr.ByteString -> Either Response Response
 handler body = 
