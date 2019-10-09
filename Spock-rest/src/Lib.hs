@@ -41,7 +41,7 @@ handler body =
     case eitherDecodeStrict body of
         Right Employee { name = n, age = a, emailAddress = e } ->
             case verifyAndCreateEmployee n a e of
-                Right emp -> Right Response { statusCode = 200 , body = "Success: " ++ n ++ " added." }
+                Right emp -> Right Response { statusCode = 200 , body = "Success: " ++ n ++ " verified" }
                 Left eMsg -> Left Response { statusCode = 400 , body = eMsg }
         Left e -> Left Response { statusCode = 400 , body = e }
 

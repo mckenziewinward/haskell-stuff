@@ -14,8 +14,8 @@ import qualified Lib (handler, body, Employee, Response)
 import Web.Spock
 import Web.Spock.Config
 import Control.Monad.Logger (LoggingT, runStdoutLoggingT)
-import Database.Persist
-import Database.Persist.Sqlite
+import qualified Database.Persist as P (get)
+import Database.Persist.Sqlite hiding (get)
 import Database.Persist.TH
 import Data.Aeson hiding (json)
 import Data.Text (Text, pack)
@@ -44,14 +44,24 @@ runSQL :: (HasSpock m, SpockConn m ~ SqlBackend) => SqlPersistT (LoggingT IO) a 
 runSQL action = runQuery $ \conn -> runStdoutLoggingT $ runSqlConn action conn
 
 app :: Api
-app = addEmployee
+app = do
+        addEmployee
+        getEmployee
 
 addEmployee :: Api 
 addEmployee = post "addEmployee" $ do 
     b <- body :: ApiAction ByteString
-    empM <- jsonBody' :: ApiAction EmployeeModel
     case Lib.handler b of
         Right r -> do
-             newId <- runSQL $ insert empM
-             json $ r {Lib.body=Lib.body r ++ ". id: "}
+            emp <- jsonBody' :: ApiAction EmployeeModel
+            newId <- runSQL $ insert emp
+            json $ r {Lib.body=Lib.body r ++ " and added, id: " ++ show (getDbId newId)}
         Left r  -> json r
+    where getDbId = unSqlBackendKey . unEmployeeModelKey
+
+getEmployee :: Api
+getEmployee = get ("employees" <//> var) $ \empId -> do
+    empM <- runSQL $ P.get empId :: ApiAction (Maybe EmployeeModel)
+    case empM of
+        Just emp -> json emp
+        Nothing -> text "Could not find a person with matching id"
