@@ -14,7 +14,7 @@ The user can then send a GET request to the `employees` path, placing the employ
 
 ###### Examples
 ```
-curl -H "Content-Type: application/json" -X POST -d "{\"name\":\"McKenzie\",\"age\":\"27\",\"emailAddress\":\"mckenziewinwardgmail.com\"}" http:localhost:8080/addEmployee
+curl -H "Content-Type: application/json" -X POST -d "{\"name\":\"John\",\"age\":\"30\",\"emailAddress\":\"john@email.com\"}" http:localhost:8080/addEmployee
 ```
 ```
 curl -H "Content-Type: application/json" -X GET http://localhost:8080/employees/1
