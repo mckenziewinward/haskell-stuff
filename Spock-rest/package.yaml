@@ -27,6 +27,7 @@ dependencies:
 - bytestring
 - regex
 - monad-logger
+- http-types
 - persistent
 - persistent-sqlite
 - persistent-template

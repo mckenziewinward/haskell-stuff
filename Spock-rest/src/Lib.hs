@@ -1,16 +1,11 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-module Lib
-    ( verifyAndCreateEmployee
-    , handler
-    , Employee (..)
-    , Response (..)
-    ) where
+module Lib (handler) where
 
 import Web.Spock hiding (body, head)
 import Web.Spock.Config
-import Text.RE.TDFA.String ((?=~), re, matched) --from the 'regex' package
+import Text.RE.TDFA.String ((?=~), re, matched) 
 import Text.Read (readMaybe)
 import Text.Printf (printf)
 import Data.Char (isUpper)
@@ -22,34 +17,28 @@ import qualified Data.Text as T
 import qualified Data.ByteString.Lazy.Char8 as LBStr
 import qualified Data.ByteString.Char8 as BStr
 
-data Employee = Employee 
+data EmployeeModel = EmployeeModel
     { name :: String
     , age :: String
     , emailAddress :: String
     } deriving (Show, Eq, Generic)
-instance ToJSON Employee
-instance FromJSON Employee
+instance ToJSON EmployeeModel
+instance FromJSON EmployeeModel
 
-data Response = Response
-    { statusCode:: Int
-    , body :: String
-    } deriving (Generic, Show)
-instance ToJSON Response
-
-handler :: BStr.ByteString -> Either Response Response
+handler :: BStr.ByteString -> Either T.Text T.Text 
 handler body = 
     case eitherDecodeStrict body of
-        Right Employee { name = n, age = a, emailAddress = e } ->
+        Right EmployeeModel { name = n, age = a, emailAddress = e } ->
             case verifyAndCreateEmployee n a e of
-                Right emp -> Right Response { statusCode = 200 , body = "Success: " ++ n ++ " verified" }
-                Left eMsg -> Left Response { statusCode = 400 , body = eMsg }
-        Left e -> Left Response { statusCode = 400 , body = e }
+                Right emp -> Right $ T.pack ("Success: " ++ n ++ " verified")
+                Left eMsg -> Left $ T.pack eMsg 
+        Left e -> Left $ T.pack e 
 
 
-verifyAndCreateEmployee :: String -> String -> String -> Either String Employee
+verifyAndCreateEmployee :: String -> String -> String -> Either String EmployeeModel
 verifyAndCreateEmployee name age emailAddress = 
     case verified of 
-        Right _  -> Right $ Employee { name = name, age = age, emailAddress = emailAddress }
+        Right _  -> Right $ EmployeeModel { name = name, age = age, emailAddress = emailAddress }
         Left err -> Left err
     where verified = verifyName name >> verifyAge age >> verifyEmailAddress emailAddress
 
@@ -64,8 +53,8 @@ checkNameLength name
 
 isNameCapitalized :: String -> Either String String
 isNameCapitalized name 
-    | isUpper . head $ name = Right name
-    | otherwise             = Left "Name should be capitalized"
+    | isUpper (head name) = Right name
+    | otherwise           = Left "Name should be capitalized"
 
 verifyAge :: String -> Either String String
 verifyAge ""  = Left "Age cannot be empty"
@@ -89,20 +78,3 @@ verifyEmailAddress emailAddress
     | matched $ emailAddress ?=~ regex = Right emailAddress
     | otherwise = Left $ printf "Invalid email address: %s" emailAddress
     where regex = [re|[a-zA-Z0-9_]+([.-]?[a-zA-Z0-9_]+)*@[a-zA-Z0-9_]+([.-]?[a-zA-Z0-9_]+)*(\.[a-zA-Z0-9_]{2,3})+|]
-
--- handler' :: String -> IO (Either String Response)
--- handler' body = 
---     case eitherDecode (LBStr.pack body) of 
---         Right result -> do
---             let r = parseEither (\obj -> do
---                     name <- obj .: "name"
---                     age  <- obj .: "age"
---                     emailAddress <- obj .: "emailAddress"
---                     return (name, age, emailAddress)) result
---             case r of 
---                 Right (n, a ,e) ->
---                     case verifyAndCreateEmployee n a e of
---                         Right emp -> return $ Right Response { statusCode = 200 , body = "Success: " ++ n ++ " added." }
---                         Left msg -> return $ Right Response { statusCode = 400 , body = msg }
---                 Left e -> return $ Right Response { statusCode = 500 , body = "Internal Server Error: " ++ e }
---         Left e -> return $ Right Response { statusCode = 500 , body = "Internal Server Error: " ++ e }
