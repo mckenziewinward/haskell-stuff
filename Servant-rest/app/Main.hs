@@ -1,7 +1,5 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -12,44 +10,41 @@ module Main where
 
 import Prelude ()
 import Prelude.Compat
-import Lib (Position(..), Email(..), HelloMessage(..), ClientInfo(..), position, hello, marketing)
-import Control.Monad.Except
-import Control.Monad.Reader
-import Data.Aeson
-import Data.Aeson.Types
-import Data.Attoparsec.ByteString
-import Data.ByteString (ByteString)
-import Data.List
-import Data.Maybe
-import Data.String.Conversions
-import Data.Time.Calendar
-import GHC.Generics
+import Lib ( Position(..)
+           , Email(..)
+           , HelloMessage(..)
+           , ClientInfo(..)
+           , Person(..)
+           , HTMLLucid(..)
+           , position
+           , hello
+           , marketing
+           , people )
 import Lucid
-import Network.HTTP.Media ((//), (/:))
-import Network.Wai
-import Network.Wai.Handler.Warp
-import Servant
-import System.Directory
-import Text.Blaze
-import Text.Blaze.Html.Renderer.Utf8
-import Servant.Types.SourceT (source)
-import qualified Data.Aeson.Parser
-import qualified Text.Blaze.Html
+import Network.Wai -- Application
+import Network.Wai.Handler.Warp -- run
+import Servant -- Server , :<|> , :> , Capture , Get , Post , '[JSON] , QueryParam, ReqBody , Raw
 
 type API = "position" :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] Position
       :<|> "hello" :> QueryParam "name" String :> Get '[JSON] HelloMessage
       :<|> "marketing" :> ReqBody '[JSON] ClientInfo :> Post '[JSON] Email
+      :<|> "persons" :> Get '[JSON, HTMLLucid] [Person]
+      :<|> "static" :> Raw
 
 server :: Server API
 server = position
         :<|> hello
         :<|> marketing
+        :<|> return people
+        :<|> serveDirectoryWebApp "static-files"
 
-userAPI :: Proxy API
-userAPI = Proxy 
+testAPI :: Proxy API
+testAPI = Proxy 
 
 app :: Application
-app = serve userAPI server
+app = serve testAPI server
 
 main :: IO ()
-main = run 8081 app 
+main = do
+    putStrLn "Running app on port 8081"
+    run 8081 app 

@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -12,9 +11,12 @@ module Lib ( Position(..)
            , Email(..)
            , HelloMessage(..)
            , ClientInfo(..) 
+           , Person(..)
+           , HTMLLucid(..)
            , position
            , hello
-           , marketing ) where 
+           , marketing
+           , people ) where 
 import Prelude ()
 import Prelude.Compat
 
@@ -68,6 +70,33 @@ data ClientInfo = ClientInfo
 instance FromJSON ClientInfo
 instance ToJSON ClientInfo
 
+data Person = Person
+  { firstName :: String
+  , lastName :: String
+  } deriving Generic
+instance ToJSON Person
+instance ToHtml Person where 
+    toHtml person = 
+        tr_ $ do
+            td_ (toHtml $ firstName person)
+            td_ (toHtml $ lastName person)
+    toHtmlRaw = toHtml 
+instance ToHtml [Person] where
+    toHtml persons = table_ $ do
+        tr_ $ do
+            th_ "first_name"
+            th_ "last_name"
+        foldMap toHtml persons
+    toHtmlRaw = toHtml
+
+data HTMLLucid
+instance Accept HTMLLucid where 
+    contentType _ = "text" // "html" /: ("charset", "utf-8")
+instance ToHtml a => MimeRender HTMLLucid a where
+    mimeRender _ = renderBS . toHtml
+instance MimeRender HTMLLucid (Html a) where
+    mimeRender _ = renderBS
+
 emailForClient :: ClientInfo -> Email
 emailForClient c = Email from' to' subject' body'
     where from'    = "great@company.com"
@@ -89,3 +118,9 @@ hello mname = return . HelloMessage $ case mname of
 
 marketing :: ClientInfo -> Handler Email
 marketing clientinfo = return (emailForClient clientinfo)
+
+people :: [Person]
+people =
+  [ Person "Isaac"  "Newton"
+  , Person "Albert" "Einstein"
+  ]

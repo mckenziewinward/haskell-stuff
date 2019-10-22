@@ -30,6 +30,7 @@ dependencies:
 - wai
 - warp
 - lucid
+- servant-lucid
 - text
 - time
 - directory
