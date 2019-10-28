@@ -41,10 +41,7 @@ server = position
 testAPI :: Proxy API
 testAPI = Proxy 
 
-app :: Application
-app = serve testAPI server
-
 main :: IO ()
 main = do
     putStrLn "Running app on port 8081"
-    run 8081 app 
+    run 8081 $ serve testAPI server 

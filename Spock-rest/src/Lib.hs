@@ -29,13 +29,9 @@ handler body =
                 Left eMsg -> Left $ T.pack eMsg 
         Left parseError -> Left $ T.pack parseError
 
-
 verifyAndCreateEmployee :: String -> String -> String -> Either String ()
 verifyAndCreateEmployee name age emailAddress = 
-    case verified of 
-        Right _  -> Right () 
-        Left err -> Left err
-    where verified = verifyName name >> verifyAge age >> verifyEmailAddress emailAddress
+    verifyName name >> verifyAge age >> verifyEmailAddress emailAddress
 
 verifyName :: String -> Either String () 
 verifyName ""   = Left "Name cannot be empty"
