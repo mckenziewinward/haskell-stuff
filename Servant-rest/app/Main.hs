@@ -29,14 +29,14 @@ type API = "position" :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] Posit
       :<|> "hello" :> QueryParam "name" String :> Get '[JSON] HelloMessage
       :<|> "marketing" :> ReqBody '[JSON] ClientInfo :> Post '[JSON] Email
       :<|> "persons" :> Get '[JSON, HTMLLucid] [Person]
-      :<|> "static" :> Raw
+      :<|> Raw
 
 server :: Server API
 server = position
         :<|> hello
         :<|> marketing
         :<|> return people
-        :<|> serveDirectoryWebApp "static-files"
+        :<|> serveDirectoryFileServer "static-files"
 
 testAPI :: Proxy API
 testAPI = Proxy 
