@@ -37,11 +37,8 @@ import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
 import System.Directory
-import Text.Blaze
-import Text.Blaze.Html.Renderer.Utf8
 import Servant.Types.SourceT (source)
 import qualified Data.Aeson.Parser
-import qualified Text.Blaze.Html
 
 data Position = Position
   { xCoord :: Int

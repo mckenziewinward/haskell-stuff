@@ -7,6 +7,7 @@ import Control.Monad.Except
 -- especially if we combine more monad transformers.
 type LengthMonad = ExceptT String IO
 
+exceptT :: IO ()
 exceptT = do
   -- runExceptT removes the ExceptT wrapper
   r <- runExceptT calculateLength

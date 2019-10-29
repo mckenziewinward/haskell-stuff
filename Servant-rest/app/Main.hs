@@ -20,10 +20,9 @@ import Lib ( Position(..)
            , hello
            , marketing
            , people )
-import Lucid
-import Network.Wai -- Application
-import Network.Wai.Handler.Warp -- run
 import Servant -- Server , :<|> , :> , Capture , Get , Post , '[JSON] , QueryParam, ReqBody , Raw
+import qualified Network.Wai as Wai -- Application
+import qualified Network.Wai.Handler.Warp as Warp -- run
 
 type API = "position" :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] Position
       :<|> "hello" :> QueryParam "name" String :> Get '[JSON] HelloMessage
@@ -44,4 +43,4 @@ testAPI = Proxy
 main :: IO ()
 main = do
     putStrLn "Running app on port 8081"
-    run 8081 $ serve testAPI server 
+    Warp.run 8081 (serve testAPI server :: Wai.Application)

@@ -24,13 +24,11 @@ dependencies:
 - base-compat
 - servant
 - servant-server
+- servant-lucid
 - aeson
-- blaze-html
-- blaze-markup
 - wai
 - warp
 - lucid
-- servant-lucid
 - text
 - time
 - directory
@@ -39,6 +37,11 @@ dependencies:
 - http-media
 - bytestring
 - attoparsec
+- sqlite-simple
+- HDBC
+- HDBC-sqlite3
+- beam-core
+- beam-sqlite
 
 library:
   source-dirs: src
