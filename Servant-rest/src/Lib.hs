@@ -121,3 +121,33 @@ people =
   [ Person "Isaac"  "Newton"
   , Person "Albert" "Einstein"
   ]
+
+data User = User
+  { email :: String
+  , first_name :: String
+  , last_name :: Int
+  , password :: [String]
+  } deriving Generic
+instance FromJSON User
+instance ToJSON User
+
+data Address = Address
+  { id    :: Int                
+  , address1 :: String               
+  , address2 :: String
+  , city  :: String
+  , state :: String
+  , zip   :: String
+  } deriving Generic
+instance FromJSON Address
+instance ToJSON Address
+
+data UserWithAddresses = UserWithAddresses
+  { user :: User
+  , addresses :: [Address]
+  } deriving Generic
+instance FromJSON UserWithAddresses
+instance ToJSON UserWithAddresses
+
+usersWithAddresses :: [User]
+usersWithAddresses = []
