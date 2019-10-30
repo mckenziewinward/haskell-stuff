@@ -42,6 +42,7 @@ dependencies:
 - HDBC-sqlite3
 - beam-core
 - beam-sqlite
+- lens
 
 library:
   source-dirs: src

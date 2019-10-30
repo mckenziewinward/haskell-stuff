@@ -9,13 +9,17 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
--- :set -XDeriveGeneric -XGADTs -XOverloadedStrings -XFlexibleContexts -XFlexibleInstances -XTypeFamilies -XTypeApplications -XDeriveAnyClass -XStandaloneDeriving -XTypeSynonymInstances -XMultiParamTypeClasses
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+-- :set -XDeriveGeneric -XGADTs -XOverloadedStrings -XFlexibleContexts -XFlexibleInstances -XTypeFamilies -XTypeApplications -XDeriveAnyClass -XStandaloneDeriving -XTypeSynonymInstances -XMultiParamTypeClasses -XImpredicativeTypes -XNoMonomorphismRestriction
 module Beam where 
 
 import Database.Beam
 import Database.Beam.Sqlite
 import Database.Beam.Backend.SQL
 import Data.Text (Text)
+import Data.String
+import Control.Lens
 import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection)
 
 --USER
@@ -39,14 +43,13 @@ type UserId = PrimaryKey UserT Identity
 
 --ADDRESS
 data AddressT f = Address
-                { _addressId    :: C f Int
-                , _addressLine1 :: C f Text
-                , _addressLine2 :: C f (Maybe Text)
-                , _addressCity  :: C f Text
-                , _addressState :: C f Text
-                , _addressZip   :: C f Text
-
-                , _addressForUser :: PrimaryKey UserT f }
+                { _addressId    :: C f Int                --id
+                , _addressLine1 :: C f Text               --line1 (address1 later)
+                , _addressLine2 :: C f (Maybe Text)       --line2 (address2 later)
+                , _addressCity  :: C f Text               --city
+                , _addressState :: C f Text               --state
+                , _addressZip   :: C f Text               --zip
+                , _addressForUser :: PrimaryKey UserT f } --for_user__email
                   deriving (Generic, Beamable)
 type Address = AddressT Identity
 deriving instance Show (PrimaryKey UserT Identity)
@@ -62,6 +65,21 @@ data ShoppingCartDb f = ShoppingCartDb
                        { _shoppingCartUser        :: f (TableEntity UserT)     --cart_user is table name. prefix doesn't matter
                        , _shoppingCartUserAddress :: f (TableEntity AddressT) }--cart_user_address is table name
                        deriving (Generic, Database be)
+--LENSES
+Address (LensFor addressId)    (LensFor addressLine1)
+        (LensFor addressLine2) (LensFor addressCity)
+        (LensFor addressState) (LensFor addressZip)
+        (UserId (LensFor addressForUserId)) =
+        tableLenses
+
+User (LensFor userEmail)    (LensFor userFirstName)
+     (LensFor userLastName) (LensFor userPassword) =
+     tableLenses
+
+ShoppingCartDb (TableLens shoppingCartUser)
+     (TableLens shoppingCartUserAddress) =
+     dbLenses
+--LENSES
 
 shoppingCartDb :: DatabaseSettings be ShoppingCartDb
 shoppingCartDb = defaultDbSettings `withDbModification`
@@ -77,8 +95,8 @@ shoppingCartDb = defaultDbSettings `withDbModification`
 
 main :: IO ()
 main = do
-    conn <- Sqlite.open "shoppingcart1.db"
-    fillDB conn
+    conn <- Sqlite.open "shoppingcart2.db"
+    fillCartUser conn
     getAllUsers conn
     userCount conn
     bounded conn
@@ -92,6 +110,13 @@ getAllUsers conn =
         users <- runSelectReturningList $ select allUsers
         mapM_ (liftIO . print) users
     where allUsers = all_ (_shoppingCartUser shoppingCartDb)
+
+getAllAddresses :: Sqlite.Connection -> IO ()
+getAllAddresses conn = do 
+    addresses <- runBeamSqliteDebug putStrLn conn $ 
+        runSelectReturningList $
+        select (all_ (shoppingCartDb ^. shoppingCartUserAddress))
+    mapM_ print addresses
 
 userCount :: Sqlite.Connection -> IO ()
 userCount conn = 
@@ -117,16 +142,26 @@ countUsersByName conn =
     where numberOfUsersByName = aggregate_ (\u -> (group_ (_userFirstName u), as_ @Int countAll_)) $
                                 all_ (_shoppingCartUser shoppingCartDb)
 
-fillDB :: Sqlite.Connection -> IO ()
-fillDB conn = 
+james :: Data.String.IsString (Columnar f Text) => UserT f
+james = User "james@example.com" "James" "Smith" "b4cc344d25a2efe540adbf2678e2304c"
+
+fillCartUser :: Sqlite.Connection -> IO ()
+fillCartUser conn = 
     runBeamSqliteDebug putStrLn conn $
     runInsert $
     insert (_shoppingCartUser shoppingCartDb) $
-    insertValues [ User "james@pallo.com" "James" "Pallo" "b4cc344d25a2efe540adbf2678e2304c" {- james -}
-                 , User "betty@sims.com" "Betty" "Sims" "82b054bd83ffad9b6cf8bdb98ce3cc2f" {- betty -}
-                 , User "james@oreily.com" "James" "O'Reily" "b4cc344d25a2efe540adbf2678e2304c" {- james -}
-                 , User "sam@sophitz.com" "Sam" "Sophitz" "332532dcfaa1cbf61e2a266bd723612c" {- sam -}
-                 , User "sam@jely.com" "Sam" "Jely" "332532dcfaa1cbf61e2a266bd723612c" {- sam -} ]
+    insertValues [james, betty, sam]
+    where betty = User "betty@example.com" "Betty" "Jones" "82b054bd83ffad9b6cf8bdb98ce3cc2f"
+          sam = User "sam@example.com" "Sam" "Taylor" "332532dcfaa1cbf61e2a266bd723612c"
+
+fillAddress :: Sqlite.Connection -> IO ()
+fillAddress conn = 
+    runBeamSqliteDebug putStrLn conn $ runInsert $
+        insert (_shoppingCartUserAddress shoppingCartDb) $
+        insertExpressions addresses
+    where addresses = [ Address default_ (val_ "123 Little Street") (val_ Nothing) (val_ "Boston") (val_ "MA") (val_ "12345") (pk james) 
+                      , Address default_ (val_ "222 Main Street") (val_ (Just "Ste 1")) (val_ "Houston") (val_ "TX") (val_ "8888") (UserId "sam@example.com" )
+                      , Address default_ (val_ "9999 Residence Ave") (val_ Nothing) (val_ "Sugarland") (val_ "TX") (val_ "8989") (UserId "betty@example.com") ] 
 
 deleteDB :: Sqlite.Connection -> IO ()
 deleteDB conn = Sqlite.execute conn "DELETE FROM cart_user" ()
