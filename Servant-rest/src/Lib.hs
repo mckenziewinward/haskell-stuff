@@ -13,10 +13,12 @@ module Lib ( Position(..)
            , ClientInfo(..) 
            , Person(..)
            , HTMLLucid(..)
+           , UserWithAddresses(..)
            , position
            , hello
            , marketing
-           , people ) where 
+           , people 
+           , usersWithAddresses ) where 
 import Prelude ()
 import Prelude.Compat
 
@@ -38,7 +40,11 @@ import Network.Wai.Handler.Warp
 import Servant
 import System.Directory
 import Servant.Types.SourceT (source)
+import Data.Text (pack, unpack)
+import Data.Function (on)
 import qualified Data.Aeson.Parser
+import qualified Beam as Beam;
+import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection)
 
 data Position = Position
   { xCoord :: Int
@@ -125,29 +131,40 @@ people =
 data User = User
   { email :: String
   , first_name :: String
-  , last_name :: Int
-  , password :: [String]
-  } deriving Generic
+  , last_name :: String
+  , password :: String
+  } deriving (Generic, Show)
 instance FromJSON User
 instance ToJSON User
 
 data Address = Address
-  { id    :: Int                
-  , address1 :: String               
-  , address2 :: String
+  { address1 :: String               
+  , address2 :: Maybe String
   , city  :: String
   , state :: String
   , zip   :: String
-  } deriving Generic
+  } deriving (Generic, Show)
 instance FromJSON Address
 instance ToJSON Address
 
 data UserWithAddresses = UserWithAddresses
   { user :: User
   , addresses :: [Address]
-  } deriving Generic
+  } deriving (Generic, Show)
 instance FromJSON UserWithAddresses
 instance ToJSON UserWithAddresses
 
-usersWithAddresses :: [User]
-usersWithAddresses = []
+usersWithAddresses :: Sqlite.Connection -> Handler [UserWithAddresses]
+usersWithAddresses conn = do
+  liftIO $ Beam.fillCartUser conn
+  liftIO $ Beam.fillAddress conn
+  uwas <- liftIO $ Beam.oneToManyLeftJoin conn
+  let grouped = map (\l -> (fst . head $ l, map snd l)) . groupBy ((==) `on` (Beam._userEmail . fst)) $ uwas
+  liftIO $ Beam.deleteDB conn
+  pure $ fmap beamToJson grouped
+          
+beamToJson :: (Beam.User, [Maybe Beam.Address]) -> UserWithAddresses
+beamToJson (user, addresses) = UserWithAddresses
+  (User (unpack $ Beam._userEmail user) (unpack $ Beam._userFirstName user) (unpack $ Beam._userLastName user) (unpack $ Beam._userPassword user))
+  (if isNothing (addresses!!0) then []
+   else fmap (\(Just a) -> Address (unpack $ Beam._addressLine1 a) (maybe Nothing (return . unpack) (Beam._addressLine2 a)) (unpack $ Beam._addressCity a) (unpack $ Beam._addressState a) (unpack $ Beam._addressZip a)) addresses)

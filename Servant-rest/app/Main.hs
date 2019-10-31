@@ -16,26 +16,31 @@ import Lib ( Position(..)
            , ClientInfo(..)
            , Person(..)
            , HTMLLucid(..)
+           , UserWithAddresses(..)
            , position
            , hello
            , marketing
-           , people )
+           , people 
+           , usersWithAddresses )
 import Servant -- Server , :<|> , :> , Capture , Get , Post , '[JSON] , QueryParam, ReqBody , Raw
 import qualified Network.Wai as Wai -- Application
 import qualified Network.Wai.Handler.Warp as Warp -- run
+import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection)
 
 type API = "position" :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] Position
       :<|> "hello" :> QueryParam "name" String :> Get '[JSON] HelloMessage
       :<|> "marketing" :> ReqBody '[JSON] ClientInfo :> Post '[JSON] Email
       :<|> "persons" :> Get '[JSON, HTMLLucid] [Person]
+      :<|> "usersWithAddresses" :> Get '[JSON] [UserWithAddresses]
       :<|> Raw
 
-server :: Server API
-server = position
-        :<|> hello
-        :<|> marketing
-        :<|> return people
-        :<|> serveDirectoryFileServer "static-files"
+server :: Sqlite.Connection -> Server API
+server conn = position
+            :<|> hello
+            :<|> marketing
+            :<|> return people
+            :<|> usersWithAddresses conn
+            :<|> serveDirectoryFileServer "static-files"
 
 testAPI :: Proxy API
 testAPI = Proxy 
@@ -43,4 +48,5 @@ testAPI = Proxy
 main :: IO ()
 main = do
     putStrLn "Running app on port 8081"
-    Warp.run 8081 (serve testAPI server :: Wai.Application)
+    conn <- Sqlite.open "shoppingcart2.db"
+    Warp.run 8081 (serve testAPI (server conn) :: Wai.Application)
