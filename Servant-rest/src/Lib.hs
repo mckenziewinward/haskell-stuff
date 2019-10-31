@@ -7,26 +7,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Lib ( Position(..)
-           , Email(..)
-           , HelloMessage(..)
-           , ClientInfo(..) 
-           , Person(..)
-           , HTMLLucid(..)
-           , UserWithAddresses(..)
-           , position
-           , hello
-           , marketing
-           , people 
-           , usersWithAddresses ) where 
+module Lib where 
 import Prelude ()
 import Prelude.Compat
 
-import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Aeson
 import Data.Aeson.Types
-import Data.Attoparsec.ByteString
+import Data.Attoparsec.ByteString hiding (try)
 import Data.ByteString (ByteString)
 import Data.List
 import Data.Maybe
@@ -40,11 +28,14 @@ import Network.Wai.Handler.Warp
 import Servant
 import System.Directory
 import Servant.Types.SourceT (source)
-import Data.Text (pack, unpack)
+import Data.Text (pack, unpack, Text)
 import Data.Function (on)
 import qualified Data.Aeson.Parser
-import qualified Beam as Beam;
-import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection)
+import qualified Beam;
+import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, Error)
+import qualified Models
+import Control.Exception hiding (Handler)
+import Control.Monad.Except
 
 data Position = Position
   { xCoord :: Int
@@ -128,43 +119,33 @@ people =
   , Person "Albert" "Einstein"
   ]
 
-data User = User
-  { email :: String
-  , first_name :: String
-  , last_name :: String
-  , password :: String
-  } deriving (Generic, Show)
-instance FromJSON User
-instance ToJSON User
+insertUserWithAddress :: Sqlite.Connection -> Models.User -> Handler String
+insertUserWithAddress conn user = do
+  liftIO $ print user
+  liftIO $ Beam.insertUserAndAddress conn user
+  return "User with address inserted"
+  -- if length (Models.addresses user) > 2
+  -- then throwError $ err400 {errBody = "Addresses length must be less than or equal to 2"}
+  -- else return "User with address inserted"
 
-data Address = Address
-  { address1 :: String               
-  , address2 :: Maybe String
-  , city  :: String
-  , state :: String
-  , zip   :: String
-  } deriving (Generic, Show)
-instance FromJSON Address
-instance ToJSON Address
-
-data UserWithAddresses = UserWithAddresses
-  { user :: User
-  , addresses :: [Address]
-  } deriving (Generic, Show)
-instance FromJSON UserWithAddresses
-instance ToJSON UserWithAddresses
-
-usersWithAddresses :: Sqlite.Connection -> Handler [UserWithAddresses]
-usersWithAddresses conn = do
-  liftIO $ Beam.fillCartUser conn
-  liftIO $ Beam.fillAddress conn
-  uwas <- liftIO $ Beam.oneToManyLeftJoin conn
-  let grouped = map (\l -> (fst . head $ l, map snd l)) . groupBy ((==) `on` (Beam._userEmail . fst)) $ uwas
-  liftIO $ Beam.deleteDB conn
-  pure $ fmap beamToJson grouped
+getUsersWithAddresses :: Sqlite.Connection -> Handler [Models.User]
+getUsersWithAddresses conn = do
+  usersWithAddresses <- liftIO $ Beam.oneToManyLeftJoin conn
+  let grouped = map (\list -> (fst . head $ list, map snd list)) 
+               . groupBy ((==) `on` (Beam._userEmail . fst)) 
+               $ usersWithAddresses
+  pure (map beamUserAddressToUser grouped)
           
-beamToJson :: (Beam.User, [Maybe Beam.Address]) -> UserWithAddresses
-beamToJson (user, addresses) = UserWithAddresses
-  (User (unpack $ Beam._userEmail user) (unpack $ Beam._userFirstName user) (unpack $ Beam._userLastName user) (unpack $ Beam._userPassword user))
-  (if isNothing (addresses!!0) then []
-   else fmap (\(Just a) -> Address (unpack $ Beam._addressLine1 a) (maybe Nothing (return . unpack) (Beam._addressLine2 a)) (unpack $ Beam._addressCity a) (unpack $ Beam._addressState a) (unpack $ Beam._addressZip a)) addresses)
+beamUserAddressToUser :: (Beam.User, [Maybe Beam.Address]) -> Models.User
+beamUserAddressToUser (user, addresses) = Models.User
+  (Beam._userEmail user) 
+  (Beam._userFirstName user) 
+  (Beam._userLastName user) 
+  (Beam._userPassword user)
+  (map (\(Just a) -> Models.Address 
+          (Beam._addressLine1 a) 
+          (pure =<< Beam._addressLine2 a) 
+          (Beam._addressCity a) 
+          (Beam._addressState a) 
+          (Beam._addressZip a)) 
+    . filter isJust $ addresses)

@@ -20,6 +20,7 @@ import Data.Text (Text)
 import Data.String
 import Control.Lens
 import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection)
+import qualified Models
 
 --USER
 data UserT f
@@ -127,15 +128,38 @@ main = do
     deleteDB conn
     Sqlite.close conn
 
+insertUserAndAddress :: Sqlite.Connection -> Models.User -> IO ()
+insertUserAndAddress conn user = do
+    runBeamSqlite conn $ do 
+        let addresses = Models.addresses user
+        [u] <- runInsertReturningList $
+                insert (_shoppingCartUser shoppingCartDb) $
+                insertExpressions [User
+                    (val_ $ Models.email user)
+                    (val_ $ Models.first_name user)
+                    (val_ $ Models.last_name user)
+                    (val_ $ Models.password user)
+                ]
+        runInsertReturningList $
+                insert (_shoppingCartUserAddress shoppingCartDb) $
+                insertExpressions (fmap (\a -> Address
+                    default_
+                    (val_ $ Models.address1 a)
+                    (val_ $ Models.address2 a)
+                    (val_ $ Models.city a)
+                    (val_ $ Models.state a)
+                    (val_ $ Models.zip a)
+                    (val_ $ pk u)
+                ) addresses)
+    return ()
+
 oneToManyLeftJoin :: Sqlite.Connection -> IO [(User, Maybe Address)]
-oneToManyLeftJoin conn = do
-    usersWithAddresses <- runBeamSqliteDebug putStrLn conn $ 
+oneToManyLeftJoin conn =
+    runBeamSqlite conn $ 
         runSelectReturningList $ select $ do
-            user <- all_ (_shoppingCartUser shoppingCartDb)
+            user <- orderBy_ (asc_ . _userFirstName) $ all_ (_shoppingCartUser shoppingCartDb)
             address <- leftJoin_ (all_ (_shoppingCartUserAddress shoppingCartDb)) (\address -> _addressForUser address ==. pk user)
             pure (user, address)
-    mapM_ print usersWithAddresses 
-    pure usersWithAddresses
 
 getAllUsers :: Sqlite.Connection -> IO ()
 getAllUsers conn = 

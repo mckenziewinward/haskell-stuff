@@ -16,22 +16,24 @@ import Lib ( Position(..)
            , ClientInfo(..)
            , Person(..)
            , HTMLLucid(..)
-           , UserWithAddresses(..)
            , position
            , hello
            , marketing
            , people 
-           , usersWithAddresses )
+           , getUsersWithAddresses 
+           , insertUserWithAddress )
 import Servant -- Server , :<|> , :> , Capture , Get , Post , '[JSON] , QueryParam, ReqBody , Raw
 import qualified Network.Wai as Wai -- Application
 import qualified Network.Wai.Handler.Warp as Warp -- run
 import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection)
+import qualified Models
 
 type API = "position" :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] Position
       :<|> "hello" :> QueryParam "name" String :> Get '[JSON] HelloMessage
       :<|> "marketing" :> ReqBody '[JSON] ClientInfo :> Post '[JSON] Email
       :<|> "persons" :> Get '[JSON, HTMLLucid] [Person]
-      :<|> "usersWithAddresses" :> Get '[JSON] [UserWithAddresses]
+      :<|> "usersWithAddresses" :> Get '[JSON] [Models.User]
+      :<|> "usersWithAddresses" :> ReqBody '[JSON] Models.User :> Post '[PlainText] String 
       :<|> Raw
 
 server :: Sqlite.Connection -> Server API
@@ -39,7 +41,8 @@ server conn = position
             :<|> hello
             :<|> marketing
             :<|> return people
-            :<|> usersWithAddresses conn
+            :<|> getUsersWithAddresses conn
+            :<|> insertUserWithAddress conn
             :<|> serveDirectoryFileServer "static-files"
 
 testAPI :: Proxy API
