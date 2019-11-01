@@ -16,10 +16,11 @@ module Beam where
 import Database.Beam
 import Database.Beam.Sqlite
 import Database.Beam.Backend.SQL
-import Data.Text (Text)
 import Data.String
+import Data.Text (Text)
 import Control.Lens
-import Control.Exception
+import Control.Exception (try)
+
 import qualified GHC.Exception.Type as ExptType (Exception)
 import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, SQLError)
 import qualified Database.Beam.Sqlite.Connection as BeamConnection (SqliteM)

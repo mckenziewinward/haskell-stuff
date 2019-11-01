@@ -30,6 +30,7 @@ import System.Directory
 import Servant.Types.SourceT (source)
 import Data.Text (pack, unpack, Text)
 import Data.Function (on)
+import Data.Pool
 import qualified Data.Aeson.Parser
 import qualified Beam;
 import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, SQLError, sqlErrorDetails)
@@ -117,8 +118,8 @@ people =
   , Person "Albert" "Einstein"
   ]
 
-insertUserWithAddress :: Sqlite.Connection -> Models.User -> Handler Text
-insertUserWithAddress conn user = do
+insertUserWithAddress :: Pool Sqlite.Connection -> Models.User -> Handler Text
+insertUserWithAddress conns user = liftIO . withResource conns $ \conn -> do
   r <- liftIO (
       Beam.insertUserAndAddress conn user :: IO (Either Sqlite.SQLError ())
     )
@@ -126,8 +127,8 @@ insertUserWithAddress conn user = do
     Left e -> pure $ Sqlite.sqlErrorDetails e
     Right _ -> pure "User with address inserted"
 
-getUsersWithAddresses :: Sqlite.Connection -> Handler [Models.User]
-getUsersWithAddresses conn = do
+getUsersWithAddresses :: Pool Sqlite.Connection -> Handler [Models.User]
+getUsersWithAddresses conns = liftIO . withResource conns $ \conn -> do
   usersWithAddresses <- liftIO $ Beam.oneToManyLeftJoin conn
   let grouped = map (\list -> (fst . head $ list, map snd list)) 
                . groupBy ((==) `on` (Beam._userEmail . fst)) 

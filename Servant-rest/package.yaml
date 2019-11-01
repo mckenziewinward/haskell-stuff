@@ -25,6 +25,7 @@ dependencies:
 - servant
 - servant-server
 - servant-lucid
+- servant-client
 - aeson
 - wai
 - warp
@@ -35,6 +36,7 @@ dependencies:
 - string-conversions
 - mtl
 - http-media
+- http-client
 - bytestring
 - attoparsec
 - sqlite-simple
@@ -43,6 +45,7 @@ dependencies:
 - beam-core
 - beam-sqlite
 - lens
+- resource-pool
 
 library:
   source-dirs: src
