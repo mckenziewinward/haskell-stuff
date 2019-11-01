@@ -19,7 +19,10 @@ import Database.Beam.Backend.SQL
 import Data.Text (Text)
 import Data.String
 import Control.Lens
-import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection)
+import Control.Exception
+import qualified GHC.Exception.Type as ExptType (Exception)
+import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, SQLError)
+import qualified Database.Beam.Sqlite.Connection as BeamConnection (SqliteM)
 import qualified Models
 
 --USER
@@ -128,30 +131,32 @@ main = do
     deleteDB conn
     Sqlite.close conn
 
-insertUserAndAddress :: Sqlite.Connection -> Models.User -> IO ()
-insertUserAndAddress conn user = do
-    runBeamSqlite conn $ do 
+tryRunBeamSqlite :: ExptType.Exception e => Sqlite.Connection -> BeamConnection.SqliteM a -> IO (Either e a)
+tryRunBeamSqlite conn = try . runBeamSqlite conn
+
+insertUserAndAddress :: Sqlite.Connection -> Models.User -> IO (Either Sqlite.SQLError ())
+insertUserAndAddress conn user = 
+    tryRunBeamSqlite conn $ do 
         let addresses = Models.addresses user
         [u] <- runInsertReturningList $
-                insert (_shoppingCartUser shoppingCartDb) $
-                insertExpressions [User
-                    (val_ $ Models.email user)
-                    (val_ $ Models.first_name user)
-                    (val_ $ Models.last_name user)
-                    (val_ $ Models.password user)
-                ]
-        runInsertReturningList $
-                insert (_shoppingCartUserAddress shoppingCartDb) $
-                insertExpressions (fmap (\a -> Address
-                    default_
-                    (val_ $ Models.address1 a)
-                    (val_ $ Models.address2 a)
-                    (val_ $ Models.city a)
-                    (val_ $ Models.state a)
-                    (val_ $ Models.zip a)
-                    (val_ $ pk u)
-                ) addresses)
-    return ()
+            insert (_shoppingCartUser shoppingCartDb) $
+            insertExpressions [User
+                (val_ $ Models.email user)
+                (val_ $ Models.first_name user)
+                (val_ $ Models.last_name user)
+                (val_ $ Models.password user)
+            ] 
+        runInsert $
+            insert (_shoppingCartUserAddress shoppingCartDb) $
+            insertExpressions (map (\a -> Address
+                default_
+                (val_ $ Models.address1 a)
+                (val_ $ Models.address2 a)
+                (val_ $ Models.city a)
+                (val_ $ Models.state a)
+                (val_ $ Models.zip a)
+                (val_ $ pk u)
+            ) addresses)
 
 oneToManyLeftJoin :: Sqlite.Connection -> IO [(User, Maybe Address)]
 oneToManyLeftJoin conn =

@@ -23,6 +23,7 @@ import Lib ( Position(..)
            , getUsersWithAddresses 
            , insertUserWithAddress )
 import Servant -- Server , :<|> , :> , Capture , Get , Post , '[JSON] , QueryParam, ReqBody , Raw
+import Data.Text
 import qualified Network.Wai as Wai -- Application
 import qualified Network.Wai.Handler.Warp as Warp -- run
 import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection)
@@ -33,7 +34,7 @@ type API = "position" :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] Posit
       :<|> "marketing" :> ReqBody '[JSON] ClientInfo :> Post '[JSON] Email
       :<|> "persons" :> Get '[JSON, HTMLLucid] [Person]
       :<|> "usersWithAddresses" :> Get '[JSON] [Models.User]
-      :<|> "usersWithAddresses" :> ReqBody '[JSON] Models.User :> Post '[PlainText] String 
+      :<|> "usersWithAddresses" :> ReqBody '[JSON] Models.User :> Post '[PlainText] Text
       :<|> Raw
 
 server :: Sqlite.Connection -> Server API

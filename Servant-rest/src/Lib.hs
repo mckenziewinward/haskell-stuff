@@ -32,10 +32,8 @@ import Data.Text (pack, unpack, Text)
 import Data.Function (on)
 import qualified Data.Aeson.Parser
 import qualified Beam;
-import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, Error)
+import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, SQLError, sqlErrorDetails)
 import qualified Models
-import Control.Exception hiding (Handler)
-import Control.Monad.Except
 
 data Position = Position
   { xCoord :: Int
@@ -103,10 +101,10 @@ emailForClient c = Email from' to' subject' body'
                   ++ " products? Give us a visit!"
 
 position :: Int -> Int -> Handler Position
-position x y = return (Position x y)
+position x y = pure $ Position x y
 
 hello :: Maybe String -> Handler HelloMessage
-hello mname = return . HelloMessage $ case mname of
+hello mname = pure . HelloMessage $ case mname of
     Nothing -> "Hello, anonymous coward"
     Just n  -> "Hello, " ++ n
 
@@ -119,14 +117,14 @@ people =
   , Person "Albert" "Einstein"
   ]
 
-insertUserWithAddress :: Sqlite.Connection -> Models.User -> Handler String
+insertUserWithAddress :: Sqlite.Connection -> Models.User -> Handler Text
 insertUserWithAddress conn user = do
-  liftIO $ print user
-  liftIO $ Beam.insertUserAndAddress conn user
-  return "User with address inserted"
-  -- if length (Models.addresses user) > 2
-  -- then throwError $ err400 {errBody = "Addresses length must be less than or equal to 2"}
-  -- else return "User with address inserted"
+  r <- liftIO (
+      Beam.insertUserAndAddress conn user :: IO (Either Sqlite.SQLError ())
+    )
+  case r of 
+    Left e -> pure $ Sqlite.sqlErrorDetails e
+    Right _ -> pure "User with address inserted"
 
 getUsersWithAddresses :: Sqlite.Connection -> Handler [Models.User]
 getUsersWithAddresses conn = do
