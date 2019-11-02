@@ -40,10 +40,12 @@ dependencies:
 - bytestring
 - attoparsec
 - sqlite-simple
+- postgresql-simple
 - HDBC
 - HDBC-sqlite3
 - beam-core
 - beam-sqlite
+- beam-postgres
 - lens
 - resource-pool
 

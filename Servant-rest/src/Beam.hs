@@ -14,8 +14,9 @@
 module Beam where 
 
 import Database.Beam
-import Database.Beam.Sqlite
-import Database.Beam.Backend.SQL
+import qualified Database.Beam.Sqlite as SqliteBeam
+import Database.Beam.Postgres
+import Database.Beam.Backend.SQL.BeamExtensions
 import Data.String
 import Data.Text (Text)
 import Control.Lens
@@ -23,8 +24,10 @@ import Control.Exception (try)
 
 import qualified GHC.Exception.Type as ExptType (Exception)
 import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, SQLError)
+import qualified Database.PostgreSQL.Simple as Postgres
 import qualified Database.Beam.Sqlite.Connection as BeamConnection (SqliteM)
-import qualified Models
+import qualified Models.Models as Models
+import qualified Models.User as User
 
 --USER
 data UserT f
@@ -132,12 +135,12 @@ main = do
     deleteDB conn
     Sqlite.close conn
 
-tryRunBeamSqlite :: ExptType.Exception e => Sqlite.Connection -> BeamConnection.SqliteM a -> IO (Either e a)
-tryRunBeamSqlite conn = try . runBeamSqlite conn
+-- tryRunBeamSqlite :: ExptType.Exception e => Postgres.Connection -> BeamConnection.SqliteM a -> IO (Either e a)
+tryRunBeamPostgres conn = try . runBeamPostgres conn
 
-insertUserAndAddress :: Sqlite.Connection -> Models.User -> IO (Either Sqlite.SQLError ())
+insertUserAndAddress :: Postgres.Connection -> Models.User -> IO (Either Postgres.SqlError ())
 insertUserAndAddress conn user = 
-    tryRunBeamSqlite conn $ do 
+    tryRunBeamPostgres conn $ do 
         let addresses = Models.addresses user
         [u] <- runInsertReturningList $
             insert (_shoppingCartUser shoppingCartDb) $
@@ -159,24 +162,29 @@ insertUserAndAddress conn user =
                 (val_ $ pk u)
             ) addresses)
 
-oneToManyLeftJoin :: Sqlite.Connection -> IO [(User, Maybe Address)]
+oneToManyLeftJoin :: Postgres.Connection -> IO [(User, Maybe Address)]
 oneToManyLeftJoin conn =
-    runBeamSqlite conn $ 
+    runBeamPostgres conn $ 
         runSelectReturningList $ select $ do
             user <- orderBy_ (asc_ . _userFirstName) $ all_ (_shoppingCartUser shoppingCartDb)
             address <- leftJoin_ (all_ (_shoppingCartUserAddress shoppingCartDb)) (\address -> _addressForUser address ==. pk user)
             pure (user, address)
 
+getUsers :: Postgres.Connection -> IO [User]
+getUsers conn =
+    runBeamPostgres conn $ runSelectReturningList $ select allUsers
+    where allUsers = all_ (_shoppingCartUser shoppingCartDb)
+
 getAllUsers :: Sqlite.Connection -> IO ()
 getAllUsers conn = 
-    runBeamSqliteDebug putStrLn conn $ do
+    SqliteBeam.runBeamSqliteDebug putStrLn conn $ do
         users <- runSelectReturningList $ select allUsers
         mapM_ (liftIO . print) users
     where allUsers = all_ (_shoppingCartUser shoppingCartDb)
 
 getAllAddresses :: Sqlite.Connection -> IO ()
 getAllAddresses conn = do 
-    addresses <- runBeamSqliteDebug putStrLn conn $ 
+    addresses <- SqliteBeam.runBeamSqliteDebug putStrLn conn $ 
         runSelectReturningList $
         select (all_ (shoppingCartDb ^. shoppingCartUserAddress))
     mapM_ print addresses
@@ -184,7 +192,7 @@ getAllAddresses conn = do
 --Cartesian Product of User and Address
 getAllPairs :: Sqlite.Connection -> IO ()
 getAllPairs conn = do
-    allPairs <- runBeamSqliteDebug putStrLn conn $
+    allPairs <- SqliteBeam.runBeamSqliteDebug putStrLn conn $
                 runSelectReturningList $ select $ do
                     user    <- all_ (shoppingCartDb ^. shoppingCartUser)
                     address <- all_ (shoppingCartDb ^. shoppingCartUserAddress)
@@ -193,7 +201,7 @@ getAllPairs conn = do
 
 getUsersAndRelatedAddressesUsingQExprSBool :: Sqlite.Connection -> IO [String]
 getUsersAndRelatedAddressesUsingQExprSBool conn = do
-    usersAndRelatedAddresses <- runBeamSqliteDebug putStrLn conn $
+    usersAndRelatedAddresses <- SqliteBeam.runBeamSqliteDebug putStrLn conn $
         runSelectReturningList $ select $ do 
             user    <- all_ (shoppingCartDb ^. shoppingCartUser)
             address <- all_ (shoppingCartDb ^. shoppingCartUserAddress)
@@ -203,7 +211,7 @@ getUsersAndRelatedAddressesUsingQExprSBool conn = do
 
 getUsersAndRelatedAddressesUsingReferences :: Sqlite.Connection -> IO [String]
 getUsersAndRelatedAddressesUsingReferences conn = do
-    usersAndRelatedAddressesUsingReferences <- runBeamSqliteDebug putStrLn conn $
+    usersAndRelatedAddressesUsingReferences <- SqliteBeam.runBeamSqliteDebug putStrLn conn $
         runSelectReturningList $ select $ do 
             user    <- all_ (shoppingCartDb ^. shoppingCartUser)
             address <- all_ (shoppingCartDb ^. shoppingCartUserAddress)
@@ -214,7 +222,7 @@ getUsersAndRelatedAddressesUsingReferences conn = do
 --SQL `JOIN ON`
 getUsersAndRelatedAddressesUsingRelated :: Sqlite.Connection -> IO [String]
 getUsersAndRelatedAddressesUsingRelated conn = do
-    usersAndRelatedAddressesUsingRelated <- runBeamSqliteDebug putStrLn conn $
+    usersAndRelatedAddressesUsingRelated <- SqliteBeam.runBeamSqliteDebug putStrLn conn $
         runSelectReturningList $ select $ do
             address <- all_ (shoppingCartDb ^. shoppingCartUserAddress)
             user <- related_ (shoppingCartDb ^. shoppingCartUser) (_addressForUser address)
@@ -224,14 +232,14 @@ getUsersAndRelatedAddressesUsingRelated conn = do
 
 userCount :: Sqlite.Connection -> IO ()
 userCount conn = 
-    runBeamSqliteDebug putStrLn conn $ do
+    SqliteBeam.runBeamSqliteDebug putStrLn conn $ do
     Just c <- runSelectReturningOne $ select userCount
     liftIO $ putStrLn ("We have " ++ show c ++ " users in the database")
     where userCount = aggregate_ (\u -> as_ @Int countAll_) (all_ (_shoppingCartUser shoppingCartDb))
 
 bounded :: Sqlite.Connection -> IO ()
 bounded conn =
-    runBeamSqliteDebug putStrLn conn $ do
+    SqliteBeam.runBeamSqliteDebug putStrLn conn $ do
     users <- runSelectReturningList (select boundedQuery)
     mapM_ (liftIO . print) users
     where boundedQuery = limit_ 1 $ offset_ 1 $
@@ -240,7 +248,7 @@ bounded conn =
 
 countUsersByName :: Sqlite.Connection -> IO ()
 countUsersByName conn = 
-    runBeamSqliteDebug putStrLn conn $ do
+    SqliteBeam.runBeamSqliteDebug putStrLn conn $ do
         countedByName <- runSelectReturningList $ select numberOfUsersByName
         mapM_ (liftIO . print) countedByName
     where numberOfUsersByName = aggregate_ (\u -> (group_ (_userFirstName u), as_ @Int countAll_)) $
@@ -251,7 +259,7 @@ james = User "james@example.com" "James" "Smith" "b4cc344d25a2efe540adbf2678e230
 
 fillCartUser :: Sqlite.Connection -> IO ()
 fillCartUser conn = 
-    runBeamSqliteDebug putStrLn conn $ runInsert $
+    SqliteBeam.runBeamSqliteDebug putStrLn conn $ runInsert $
         insert (_shoppingCartUser shoppingCartDb) $
         insertValues [james, betty, sam]
     where betty = User "betty@example.com" "Betty" "Jones" "82b054bd83ffad9b6cf8bdb98ce3cc2f"
@@ -259,7 +267,7 @@ fillCartUser conn =
 
 fillAddress :: Sqlite.Connection -> IO ()
 fillAddress conn = 
-    runBeamSqliteDebug putStrLn conn $ runInsert $
+    SqliteBeam.runBeamSqliteDebug putStrLn conn $ runInsert $
         insert (_shoppingCartUserAddress shoppingCartDb) $
         insertExpressions addresses
     where addresses = [ Address default_ (val_ "123 Little Street") (val_ Nothing) (val_ "Boston") (val_ "MA") (val_ "12345") (pk james) 
@@ -268,14 +276,14 @@ fillAddress conn =
 
 deleteHoustonAddress :: Sqlite.Connection -> IO ()
 deleteHoustonAddress conn =
-    runBeamSqliteDebug putStrLn conn $
+    SqliteBeam.runBeamSqliteDebug putStrLn conn $
         runDelete $ delete (shoppingCartDb ^. shoppingCartUserAddress)
                            (\address -> address ^. addressCity ==. "Houston" &&.
                                         _addressForUser address ==. UserId "betty@example.com")
 
 updateJames :: Sqlite.Connection -> IO ()
 updateJames conn = do
-    Just j <- runBeamSqliteDebug putStrLn conn $ do
+    Just j <- SqliteBeam.runBeamSqliteDebug putStrLn conn $ do
         runUpdate $
             save (shoppingCartDb ^. shoppingCartUser) (james { _userPassword = "52a516ca6df436828d9c0d26e31ef704" })
         runSelectReturningOne $
@@ -284,7 +292,7 @@ updateJames conn = do
 
 updateAddresses :: Sqlite.Connection -> IO ()
 updateAddresses conn = do
-    addresses <- runBeamSqliteDebug putStrLn conn $ do 
+    addresses <- SqliteBeam.runBeamSqliteDebug putStrLn conn $ do 
         runUpdate $ update (shoppingCartDb ^. shoppingCartUserAddress)
                            (\address -> mconcat [ address ^. addressCity <-. val_ "Sugarville" 
                                                 , address ^. addressZip <-. val_ "12345" ])

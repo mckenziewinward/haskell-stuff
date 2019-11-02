@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Models where
+module Models.Models where
 
 import Data.Aeson
 import GHC.Generics
