@@ -23,9 +23,11 @@ import qualified Network.Wai as Wai -- Application
 import qualified Network.Wai.Handler.Warp as Warp -- run
 import qualified Database.SQLite.Simple as Sqlite (open, close, execute, execute_, withConnection, Connection)
 import qualified Database.PostgreSQL.Simple as Postgres
-import qualified Models.Models as Models
+
+import qualified DB
 import qualified Models.User as User
-import qualified Beam
+import qualified Models.Address as Address
+import qualified Models.UserWithAddresses as UserWithAddresses
 
 type DBConnectionString = ByteString
 
@@ -33,8 +35,8 @@ type API = "position" :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] Posit
     :<|> "hello" :> QueryParam "name" String :> Get '[JSON] HelloMessage
     :<|> "marketing" :> ReqBody '[JSON] ClientInfo :> Post '[JSON] Email
     :<|> "persons" :> Get '[JSON, HTMLLucid] [Person]
-    :<|> "usersWithAddresses" :> Get '[JSON] [Models.User]
-    :<|> "usersWithAddresses" :> ReqBody '[JSON] Models.User :> Post '[PlainText] Text
+    :<|> "usersWithAddresses" :> Get '[JSON] [UserWithAddresses.User]
+    :<|> "usersWithAddresses" :> ReqBody '[JSON] UserWithAddresses.User :> Post '[PlainText] Text
     :<|> "users" :> Get '[JSON] [User.User]
     :<|> Raw
 

@@ -11,7 +11,7 @@
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 -- :set -XDeriveGeneric -XGADTs -XOverloadedStrings -XFlexibleContexts -XFlexibleInstances -XTypeFamilies -XTypeApplications -XDeriveAnyClass -XStandaloneDeriving -XTypeSynonymInstances -XMultiParamTypeClasses -XImpredicativeTypes -XNoMonomorphismRestriction
-module Beam where 
+module DB where 
 
 import Database.Beam
 import qualified Database.Beam.Sqlite as SqliteBeam
@@ -21,13 +21,14 @@ import Data.String
 import Data.Text (Text)
 import Control.Lens
 import Control.Exception (try)
-
 import qualified GHC.Exception.Type as ExptType (Exception)
 import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, SQLError)
 import qualified Database.PostgreSQL.Simple as Postgres
 import qualified Database.Beam.Sqlite.Connection as BeamConnection (SqliteM)
-import qualified Models.Models as Models
+
 import qualified Models.User as User
+import qualified Models.Address as Address
+import qualified Models.UserWithAddresses as UserWithAddresses
 
 --USER
 data UserT f
@@ -138,27 +139,27 @@ main = do
 -- tryRunBeamSqlite :: ExptType.Exception e => Postgres.Connection -> BeamConnection.SqliteM a -> IO (Either e a)
 tryRunBeamPostgres conn = try . runBeamPostgres conn
 
-insertUserAndAddress :: Postgres.Connection -> Models.User -> IO (Either Postgres.SqlError ())
+insertUserAndAddress :: Postgres.Connection -> UserWithAddresses.User -> IO (Either Postgres.SqlError ())
 insertUserAndAddress conn user = 
     tryRunBeamPostgres conn $ do 
-        let addresses = Models.addresses user
+        let addresses = UserWithAddresses.addresses user
         [u] <- runInsertReturningList $
             insert (_shoppingCartUser shoppingCartDb) $
             insertExpressions [User
-                (val_ $ Models.email user)
-                (val_ $ Models.first_name user)
-                (val_ $ Models.last_name user)
-                (val_ $ Models.password user)
+                (val_ $ UserWithAddresses.email user)
+                (val_ $ UserWithAddresses.first_name user)
+                (val_ $ UserWithAddresses.last_name user)
+                (val_ $ UserWithAddresses.password user)
             ] 
         runInsert $
             insert (_shoppingCartUserAddress shoppingCartDb) $
             insertExpressions (map (\a -> Address
                 default_
-                (val_ $ Models.address1 a)
-                (val_ $ Models.address2 a)
-                (val_ $ Models.city a)
-                (val_ $ Models.state a)
-                (val_ $ Models.zip a)
+                (val_ $ Address.address1 a)
+                (val_ $ Address.address2 a)
+                (val_ $ Address.city a)
+                (val_ $ Address.state a)
+                (val_ $ Address.zip a)
                 (val_ $ pk u)
             ) addresses)
 

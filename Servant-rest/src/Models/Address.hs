@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Models.Models where
+module Models.Address where
 
 import Data.Aeson
 import GHC.Generics
@@ -15,13 +15,3 @@ data Address = Address
   } deriving (Generic, Show)
 instance FromJSON Address
 instance ToJSON Address
-
-data User = User
-  { email :: Text
-  , first_name :: Text 
-  , last_name :: Text
-  , password :: Text
-  , addresses :: [Address]
-  } deriving (Generic, Show)
-instance FromJSON User
-instance ToJSON User

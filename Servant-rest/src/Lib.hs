@@ -33,11 +33,13 @@ import Servant
 import System.Directory
 import Servant.Types.SourceT (source)
 import qualified Data.Aeson.Parser
-import qualified Beam;
 import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, SQLError, sqlErrorDetails)
 import qualified Database.PostgreSQL.Simple as Postgres
-import qualified Models.Models as Models
+
+import qualified DB;
 import qualified Models.User as User
+import qualified Models.Address as Address
+import qualified Models.UserWithAddresses as UserWithAddresses
 
 data Position = Position
   { xCoord :: Int
@@ -121,45 +123,43 @@ people =
   , Person "Albert" "Einstein"
   ]
 
-insertUserWithAddress :: Pool Postgres.Connection -> Models.User -> Handler Text
+insertUserWithAddress :: Pool Postgres.Connection -> UserWithAddresses.User -> Handler Text
 insertUserWithAddress conns user = liftIO . withResource conns $ \conn -> do
   r <- liftIO (
-      Beam.insertUserAndAddress conn user :: IO (Either Postgres.SqlError ())
+      DB.insertUserAndAddress conn user :: IO (Either Postgres.SqlError ())
     )
   case r of 
     Left e -> pure $ decodeUtf8 (Postgres.sqlErrorDetail e)
     Right _ -> pure "User with address inserted"
 
-getUsersWithAddresses :: Pool Postgres.Connection -> Handler [Models.User]
+getUsersWithAddresses :: Pool Postgres.Connection -> Handler [UserWithAddresses.User]
 getUsersWithAddresses conns = liftIO . withResource conns $ \conn -> do
-  usersWithAddresses <- liftIO $ Beam.oneToManyLeftJoin conn
+  usersWithAddresses <- liftIO $ DB.oneToManyLeftJoin conn
   let grouped = map (\list -> (fst . head $ list, map snd list)) 
-               . groupBy ((==) `on` (Beam._userEmail . fst)) 
-               $ usersWithAddresses
+                . groupBy ((==) `on` (DB._userEmail . fst)) 
+                $ usersWithAddresses
   pure (map beamUserAddressToUser grouped)
+  where beamUserAddressToUser :: (DB.User, [Maybe DB.Address]) -> UserWithAddresses.User
+        beamUserAddressToUser (user, addresses) = UserWithAddresses.User 
+          (DB._userEmail user) 
+          (DB._userFirstName user) 
+          (DB._userLastName user) 
+          (DB._userPassword user)
+          (map (\(Just a) -> Address.Address 
+                  (DB._addressLine1 a) 
+                  (pure =<< DB._addressLine2 a) 
+                  (DB._addressCity a) 
+                  (DB._addressState a) 
+                  (DB._addressZip a)) 
+            . filter isJust $ addresses)
 
 getUsers :: Pool Postgres.Connection -> Handler [User.User]
 getUsers conns = liftIO . withResource conns $ \conn -> do
-  users <- liftIO $ Beam.getUsers conn
+  users <- liftIO $ DB.getUsers conn
   pure (map beamUserToUser users)
-
-beamUserToUser :: Beam.User -> User.User
-beamUserToUser user = User.User
-  (Beam._userEmail user) 
-  (Beam._userFirstName user) 
-  (Beam._userLastName user) 
-  (Beam._userPassword user)
-          
-beamUserAddressToUser :: (Beam.User, [Maybe Beam.Address]) -> Models.User
-beamUserAddressToUser (user, addresses) = Models.User
-  (Beam._userEmail user) 
-  (Beam._userFirstName user) 
-  (Beam._userLastName user) 
-  (Beam._userPassword user)
-  (map (\(Just a) -> Models.Address 
-          (Beam._addressLine1 a) 
-          (pure =<< Beam._addressLine2 a) 
-          (Beam._addressCity a) 
-          (Beam._addressState a) 
-          (Beam._addressZip a)) 
-    . filter isJust $ addresses)
+  where beamUserToUser :: DB.User -> User.User
+        beamUserToUser user = User.User
+          (DB._userEmail user) 
+          (DB._userFirstName user) 
+          (DB._userLastName user) 
+          (DB._userPassword user)
