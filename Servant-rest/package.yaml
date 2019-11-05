@@ -25,6 +25,7 @@ dependencies:
 - servant
 - servant-server
 - servant-lucid
+- servant-client
 - aeson
 - wai
 - warp
@@ -35,14 +36,18 @@ dependencies:
 - string-conversions
 - mtl
 - http-media
+- http-client
 - bytestring
 - attoparsec
 - sqlite-simple
+- postgresql-simple
 - HDBC
 - HDBC-sqlite3
 - beam-core
 - beam-sqlite
+- beam-postgres
 - lens
+- resource-pool
 
 library:
   source-dirs: src
