@@ -30,9 +30,10 @@ import Network.HTTP.Media ((//), (/:))
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
-import System.Directory
+import System.Clock (getTime, Clock (Monotonic))
+import Formatting (fprint, (%))
+import Formatting.Clock (timeSpecs)
 import Servant.Types.SourceT (source)
-import qualified Data.Aeson.Parser
 import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, SQLError, sqlErrorDetails)
 import qualified Database.PostgreSQL.Simple as Postgres
 
@@ -133,12 +134,17 @@ insertUserWithAddress conns user = liftIO . withResource conns $ \conn -> do
     Right _ -> pure "User with address inserted"
 
 getUsersWithAddresses :: Pool Postgres.Connection -> Handler [UserWithAddresses.User]
-getUsersWithAddresses conns = liftIO . withResource conns $ \conn -> do
-  usersWithAddresses <- liftIO $ DB.oneToManyLeftJoin conn
-  let grouped = map (\list -> (fst . head $ list, map snd list)) 
-                . groupBy ((==) `on` (DB._userEmail . fst)) 
-                $ usersWithAddresses
-  pure (map beamUserAddressToUser grouped)
+getUsersWithAddresses conns = do 
+  start <- liftIO $ getTime Monotonic
+  r <- liftIO . withResource conns $ \conn -> do
+    usersWithAddresses <- liftIO $ DB.oneToManyLeftJoin conn
+    let grouped = map (\list -> (fst . head $ list, map snd list)) 
+                  . groupBy ((==) `on` (DB._userEmail . fst)) 
+                  $ usersWithAddresses
+    pure (map beamUserAddressToUser grouped)
+  end <- liftIO $ getTime Monotonic
+  liftIO $ fprint (timeSpecs % "\n") start end
+  return r
   where beamUserAddressToUser :: (DB.User, [Maybe DB.Address]) -> UserWithAddresses.User
         beamUserAddressToUser (user, addresses) = UserWithAddresses.User 
           (DB._userEmail user) 

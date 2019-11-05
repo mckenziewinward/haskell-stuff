@@ -32,7 +32,6 @@ dependencies:
 - lucid
 - text
 - time
-- directory
 - string-conversions
 - mtl
 - http-media
@@ -41,13 +40,13 @@ dependencies:
 - attoparsec
 - sqlite-simple
 - postgresql-simple
-- HDBC
-- HDBC-sqlite3
 - beam-core
 - beam-sqlite
 - beam-postgres
 - lens
 - resource-pool
+- clock
+- formatting
 
 library:
   source-dirs: src

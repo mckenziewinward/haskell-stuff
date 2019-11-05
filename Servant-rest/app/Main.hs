@@ -35,7 +35,7 @@ type API = "position" :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] Posit
     :<|> "hello" :> QueryParam "name" String :> Get '[JSON] HelloMessage
     :<|> "marketing" :> ReqBody '[JSON] ClientInfo :> Post '[JSON] Email
     :<|> "persons" :> Get '[JSON, HTMLLucid] [Person]
-    :<|> "usersWithAddresses" :> Get '[JSON] [UserWithAddresses.User]
+    :<|> "usersWithAddresses" :> Get '[JSON, HTMLLucid] [UserWithAddresses.User]
     :<|> "usersWithAddresses" :> ReqBody '[JSON] UserWithAddresses.User :> Post '[PlainText] Text
     :<|> "users" :> Get '[JSON] [User.User]
     :<|> Raw
@@ -63,7 +63,7 @@ initDB connstr = bracket (Postgres.connectPostgreSQL connstr) Postgres.close $ \
 
 initConnectionPool :: DBConnectionString -> IO (Pool Postgres.Connection)
 initConnectionPool connStr = 
-    createPool (Postgres.connectPostgreSQL connStr) Postgres.close 2 60 10
+    createPool (Postgres.connectPostgreSQL connStr) Postgres.close 2 300 10
 
 runApp :: Pool Postgres.Connection -> IO ()
 runApp conns = 
