@@ -26,27 +26,35 @@ import qualified Models.UserWithAddresses as UserWithAddresses
 
 type DBConnectionString = ByteString
 
-type API = "position" :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] Position
-    :<|> "hello" :> QueryParam "name" String :> Get '[JSON] HelloMessage
-    :<|> "marketing" :> ReqBody '[JSON] ClientInfo :> Post '[JSON] Email
-    :<|> "persons" :> Get '[JSON, HTMLLucid] [Person]
-    :<|> "usersWithAddresses" :> Get '[JSON, HTMLLucid] [UserWithAddresses.User]
-    :<|> "usersWithAddresses" :> ReqBody '[JSON] UserWithAddresses.User :> Post '[PlainText] Text
-    :<|> "users" :> Get '[JSON] [User.User]
-    :<|> Raw
+type API =  "api" :>
+    ("position" :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] Position :<|> 
+     "hello" :> QueryParam "name" String :> Get '[JSON] HelloMessage :<|>
+     "marketing" :> ReqBody '[JSON] ClientInfo :> Post '[JSON] Email :<|> 
+     "persons" :> Get '[JSON, HTMLLucid] [Person] :<|> 
+     "usersWithAddresses" :> Get '[JSON, HTMLLucid] [UserWithAddresses.User] :<|> 
+     "usersWithAddresses" :> ReqBody '[JSON] UserWithAddresses.User :> Post '[PlainText] Text :<|> 
+     "users" :> Get '[JSON] [User.User])
 
 server :: Pool Postgres.Connection -> Server API
-server conns = position
+server conns = 
+    position
     :<|> hello
     :<|> marketing
     :<|> return people
     :<|> getUsersWithAddresses conns
     :<|> insertUserWithAddress conns
     :<|> getUsers conns
-    :<|> serveDirectoryFileServer "static-files"
 
 api :: Proxy API
 api = Proxy 
+
+type WithClient = API :<|> Raw
+
+serverWithClient :: Pool Postgres.Connection -> Server WithClient
+serverWithClient conns = server conns :<|> serveDirectoryFileServer "client"
+
+withClient :: Proxy WithClient
+withClient = Proxy
 
 initDB :: DBConnectionString -> IO ()
 initDB connstr = bracket (Postgres.connectPostgreSQL connstr) Postgres.close $ \conn -> do
@@ -60,4 +68,4 @@ initConnectionPool connStr =
 
 runApp :: Pool Postgres.Connection -> IO ()
 runApp conns = 
-    Warp.run 8081 (serve api $ server conns :: Wai.Application)
+    Warp.run 8081 (serve withClient $ serverWithClient conns :: Wai.Application)
