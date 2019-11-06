@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Models.Address where
 
@@ -26,5 +25,6 @@ instance ToHtml Address where
   toHtmlRaw = toHtml
 
 instance ToHtml [Address] where 
-  toHtml (a:as) = toHtml a
+  toHtml [] = toHtml ""
+  toHtml (a:_) = toHtml a
   toHtmlRaw = toHtml

@@ -7,34 +7,25 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Lib where 
+module App where 
 import Prelude ()
 import Prelude.Compat
 
 import Control.Monad.Reader
 import Data.Aeson
-import Data.Aeson.Types
-import Data.Attoparsec.ByteString hiding (try)
-import Data.ByteString (ByteString)
 import Data.List
-import Data.Text (pack, unpack, Text)
+import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Function (on)
 import Data.Pool
 import Data.Maybe
-import Data.String.Conversions
-import Data.Time.Calendar
 import GHC.Generics
 import Lucid
 import Network.HTTP.Media ((//), (/:))
-import Network.Wai
-import Network.Wai.Handler.Warp
 import Servant
 import System.Clock (getTime, Clock (Monotonic))
 import Formatting (fprint, (%))
 import Formatting.Clock (timeSpecs)
-import Servant.Types.SourceT (source)
-import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, SQLError, sqlErrorDetails)
 import qualified Database.PostgreSQL.Simple as Postgres
 
 import qualified DB;

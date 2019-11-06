@@ -10,13 +10,6 @@ extra-source-files:
 - README.md
 - ChangeLog.md
 
-# Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            Web
-
-# To avoid duplicated efforts in documentation and dealing with the
-# complications of embedding Haddock markup inside cabal files, it is
-# common to point users to the README.md file.
 description:         Please see the README on GitHub at <https://github.com/githubuser/Servant-rest#readme>
 
 dependencies:
@@ -48,27 +41,24 @@ dependencies:
 - clock
 - formatting
 
-library:
-  source-dirs: src
-
 executables:
-  Servant-rest-exe:
-    main:                Main.hs
-    source-dirs:         app
+  server:
+    main: Main.hs
+    source-dirs:         
+      - server/src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    dependencies:
-    - Servant-rest
+    - -Wall
 
 tests:
-  Servant-rest-test:
-    main:                Spec.hs
-    source-dirs:         test
+  spec:
+    main: Spec.hs
+    source-dirs:         
+      - server/test
+      - server/src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    dependencies:
-    - Servant-rest

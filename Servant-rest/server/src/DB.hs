@@ -19,14 +19,11 @@ import Database.Beam.Postgres
 import Database.Beam.Backend.SQL.BeamExtensions
 import Data.String
 import Data.Text (Text)
-import Control.Lens
 import Control.Exception (try)
 import qualified GHC.Exception.Type as ExptType (Exception)
-import qualified Database.SQLite.Simple as Sqlite (open, close, execute, Connection, SQLError)
+import qualified Database.SQLite.Simple as Sqlite
 import qualified Database.PostgreSQL.Simple as Postgres
-import qualified Database.Beam.Sqlite.Connection as BeamConnection (SqliteM)
 
-import qualified Models.User as User
 import qualified Models.Address as Address
 import qualified Models.UserWithAddresses as UserWithAddresses
 
@@ -76,22 +73,6 @@ data ShoppingCartDb f = ShoppingCartDb
                        deriving (Generic, Database be)
 --DATABASE
 
---LENSES
-Address (LensFor addressId)    (LensFor addressLine1)
-        (LensFor addressLine2) (LensFor addressCity)
-        (LensFor addressState) (LensFor addressZip)
-        (UserId (LensFor addressForUserId)) =
-        tableLenses
-
-User (LensFor userEmail)    (LensFor userFirstName)
-     (LensFor userLastName) (LensFor userPassword) =
-     tableLenses
-
-ShoppingCartDb (TableLens shoppingCartUser)
-     (TableLens shoppingCartUserAddress) =
-     dbLenses
---LENSES
-
 shoppingCartDb :: DatabaseSettings be ShoppingCartDb
 shoppingCartDb = 
     defaultDbSettings `withDbModification`
@@ -136,7 +117,7 @@ main = do
     deleteDB conn
     Sqlite.close conn
 
--- tryRunBeamSqlite :: ExptType.Exception e => Postgres.Connection -> BeamConnection.SqliteM a -> IO (Either e a)
+tryRunBeamPostgres :: ExptType.Exception e => Postgres.Connection -> Pg a -> IO (Either e a)
 tryRunBeamPostgres conn = try . runBeamPostgres conn
 
 insertUserAndAddress :: Postgres.Connection -> UserWithAddresses.User -> IO (Either Postgres.SqlError ())
@@ -187,7 +168,7 @@ getAllAddresses :: Sqlite.Connection -> IO ()
 getAllAddresses conn = do 
     addresses <- SqliteBeam.runBeamSqliteDebug putStrLn conn $ 
         runSelectReturningList $
-        select (all_ (shoppingCartDb ^. shoppingCartUserAddress))
+        select (all_ (_shoppingCartUserAddress shoppingCartDb))
     mapM_ print addresses
 
 --Cartesian Product of User and Address
@@ -195,8 +176,8 @@ getAllPairs :: Sqlite.Connection -> IO ()
 getAllPairs conn = do
     allPairs <- SqliteBeam.runBeamSqliteDebug putStrLn conn $
                 runSelectReturningList $ select $ do
-                    user    <- all_ (shoppingCartDb ^. shoppingCartUser)
-                    address <- all_ (shoppingCartDb ^. shoppingCartUserAddress)
+                    user    <- all_ (_shoppingCartUser shoppingCartDb)
+                    address <- all_ (_shoppingCartUserAddress shoppingCartDb)
                     return (user, address)
     mapM_ print allPairs
 
@@ -204,9 +185,9 @@ getUsersAndRelatedAddressesUsingQExprSBool :: Sqlite.Connection -> IO [String]
 getUsersAndRelatedAddressesUsingQExprSBool conn = do
     usersAndRelatedAddresses <- SqliteBeam.runBeamSqliteDebug putStrLn conn $
         runSelectReturningList $ select $ do 
-            user    <- all_ (shoppingCartDb ^. shoppingCartUser)
-            address <- all_ (shoppingCartDb ^. shoppingCartUserAddress)
-            guard_ (address ^. addressForUserId ==. user ^. userEmail)
+            user    <- all_ (_shoppingCartUser shoppingCartDb)
+            address <- all_ (_shoppingCartUserAddress shoppingCartDb)
+            guard_ (_addressForUser address ==. pk user)
             pure (user, address)
     return $ map show usersAndRelatedAddresses
 
@@ -214,8 +195,8 @@ getUsersAndRelatedAddressesUsingReferences :: Sqlite.Connection -> IO [String]
 getUsersAndRelatedAddressesUsingReferences conn = do
     usersAndRelatedAddressesUsingReferences <- SqliteBeam.runBeamSqliteDebug putStrLn conn $
         runSelectReturningList $ select $ do 
-            user    <- all_ (shoppingCartDb ^. shoppingCartUser)
-            address <- all_ (shoppingCartDb ^. shoppingCartUserAddress)
+            user    <- all_ (_shoppingCartUser shoppingCartDb)
+            address <- all_ (_shoppingCartUserAddress shoppingCartDb)
             guard_ (_addressForUser address `references_` user)
             pure (user, address)
     return $ map show usersAndRelatedAddressesUsingReferences
@@ -225,8 +206,8 @@ getUsersAndRelatedAddressesUsingRelated :: Sqlite.Connection -> IO [String]
 getUsersAndRelatedAddressesUsingRelated conn = do
     usersAndRelatedAddressesUsingRelated <- SqliteBeam.runBeamSqliteDebug putStrLn conn $
         runSelectReturningList $ select $ do
-            address <- all_ (shoppingCartDb ^. shoppingCartUserAddress)
-            user <- related_ (shoppingCartDb ^. shoppingCartUser) (_addressForUser address)
+            address <- all_ (_shoppingCartUserAddress shoppingCartDb)
+            user <- related_ (_shoppingCartUser shoppingCartDb) (_addressForUser address)
             pure (user, address)
     mapM_ print usersAndRelatedAddressesUsingRelated
     return $ map show usersAndRelatedAddressesUsingRelated
@@ -234,9 +215,9 @@ getUsersAndRelatedAddressesUsingRelated conn = do
 userCount :: Sqlite.Connection -> IO ()
 userCount conn = 
     SqliteBeam.runBeamSqliteDebug putStrLn conn $ do
-    Just c <- runSelectReturningOne $ select userCount
+    Just c <- runSelectReturningOne $ select uCount
     liftIO $ putStrLn ("We have " ++ show c ++ " users in the database")
-    where userCount = aggregate_ (\u -> as_ @Int countAll_) (all_ (_shoppingCartUser shoppingCartDb))
+    where uCount = aggregate_ (\_ -> as_ @Int countAll_) (all_ (_shoppingCartUser shoppingCartDb))
 
 bounded :: Sqlite.Connection -> IO ()
 bounded conn =
@@ -278,28 +259,28 @@ fillAddress conn =
 deleteHoustonAddress :: Sqlite.Connection -> IO ()
 deleteHoustonAddress conn =
     SqliteBeam.runBeamSqliteDebug putStrLn conn $
-        runDelete $ delete (shoppingCartDb ^. shoppingCartUserAddress)
-                           (\address -> address ^. addressCity ==. "Houston" &&.
+        runDelete $ delete (_shoppingCartUserAddress shoppingCartDb)
+                           (\address -> _addressCity address ==. "Houston" &&.
                                         _addressForUser address ==. UserId "betty@example.com")
 
 updateJames :: Sqlite.Connection -> IO ()
 updateJames conn = do
     Just j <- SqliteBeam.runBeamSqliteDebug putStrLn conn $ do
         runUpdate $
-            save (shoppingCartDb ^. shoppingCartUser) (james { _userPassword = "52a516ca6df436828d9c0d26e31ef704" })
+            save (_shoppingCartUser shoppingCartDb) (james { _userPassword = "52a516ca6df436828d9c0d26e31ef704" })
         runSelectReturningOne $
-            lookup_ (shoppingCartDb ^. shoppingCartUser) (UserId "james@example.com")
-    putStrLn ("James's new password is " ++ show (j ^. userPassword))
+            lookup_ (_shoppingCartUser shoppingCartDb ) (UserId "james@example.com")
+    putStrLn ("James's new password is " ++ show (_userPassword j))
 
 updateAddresses :: Sqlite.Connection -> IO ()
 updateAddresses conn = do
     addresses <- SqliteBeam.runBeamSqliteDebug putStrLn conn $ do 
-        runUpdate $ update (shoppingCartDb ^. shoppingCartUserAddress)
-                           (\address -> mconcat [ address ^. addressCity <-. val_ "Sugarville" 
-                                                , address ^. addressZip <-. val_ "12345" ])
-                           (\address -> address ^. addressCity ==. val_ "Sugarland" &&. 
-                                        address ^. addressState ==. val_ "TX")
-        runSelectReturningList $ select $ all_ (shoppingCartDb ^. shoppingCartUserAddress)
+        runUpdate $ update (_shoppingCartUserAddress shoppingCartDb)
+                           (\address -> mconcat [ _addressCity address <-. val_ "Sugarville" 
+                                                , _addressZip address  <-. val_ "12345" ])
+                           (\address -> _addressCity address  ==. val_ "Sugarland" &&. 
+                                        _addressState address ==. val_ "TX")
+        runSelectReturningList $ select $ all_ (_shoppingCartUserAddress shoppingCartDb)
     mapM_ print addresses
 
 deleteDB :: Sqlite.Connection -> IO ()
