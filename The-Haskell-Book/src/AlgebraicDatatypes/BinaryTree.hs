@@ -39,7 +39,11 @@ mapOkay =
 
 testTree :: BinaryTree Integer
 testTree = 
-    Node (Node (Node Leaf 4 Leaf) 2 (Node Leaf 5 Leaf)) 1 (Node Leaf 3 Leaf)
+    Node (Node (Node Leaf 1 Leaf) 
+               2 
+               (Node Leaf 3 Leaf)) 
+         4 
+         (Node Leaf 5 Leaf)
 
 preorder :: BinaryTree a -> [a]
 preorder Leaf = []
@@ -54,17 +58,17 @@ postorder Leaf = []
 postorder (Node left a right) = postorder left ++ postorder right ++ [a]
 
 testPreorder :: IO ()
-testPreorder = if preorder testTree == [1,2,4,5,3] 
+testPreorder = if preorder testTree == [4,2,1,3,5] 
                then putStrLn "Preorder fine!"
                else putStrLn "Bad news bears."
 
 testInorder :: IO()
-testInorder = if inorder testTree == [4,2,5,1,3] 
+testInorder = if inorder testTree == [1,2,3,4,5]
               then putStrLn "Inorder fine!"
               else putStrLn "Bad news bears."
 
 testPostorder :: IO()
-testPostorder = if postorder testTree == [4,5,2,3,1] 
+testPostorder = if postorder testTree == [1,3,2,5,4] 
               then putStrLn "Postorder fine!"
               else putStrLn "Bad news bears."
 
