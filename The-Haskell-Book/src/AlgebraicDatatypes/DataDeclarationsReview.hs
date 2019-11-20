@@ -8,7 +8,7 @@ instance Show Boolean where
 infixr 5 :-:
 data List a = Empty | a :-: (List a)
 instance Show a => Show (List a) where 
-    show list = "[" ++ show' list ++ "]"
+    show l = "[" ++ show' l ++ "]"
         where show' Empty = ""
               show' (a :-: Empty) = show a
               show' (a :-: b) = show a ++ "," ++ show' b
