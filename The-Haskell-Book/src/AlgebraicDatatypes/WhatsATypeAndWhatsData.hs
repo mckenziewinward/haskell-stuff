@@ -26,9 +26,13 @@ data Vehicle = Car Manufacturer Price
 
 
 {-Exercises-}
+myCar :: Vehicle
 myCar = Car Mini (Price 14000)
+urCar :: Vehicle
 urCar = Car Mazda (Price 20000)
+clownCar :: Vehicle
 clownCar = Car Tata (Price 7000)
+doge :: Vehicle
 doge = Plane PapuAir (Feet 250) 
 {-
 1. What is the type of myCar?
@@ -52,8 +56,7 @@ isPlane (Plane _ _) = True
 isPlane _           = False
 
 areCars :: [Vehicle] -> Bool
-areCars []     = True
-areCars (v:vs) = isCar v && areCars vs
+areCars = foldr ((&&) . isCar) True
 {-
 3.Now we’re going to write a function to tell us the manufacturer of a piece of data:
     getManu :: Vehicle-> Manufacturer

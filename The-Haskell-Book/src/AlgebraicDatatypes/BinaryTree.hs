@@ -1,5 +1,7 @@
 module AlgebraicDatatypes.BinaryTree where
     
+import Test.Hspec
+
 data BinaryTree a = 
     Leaf
   | Node (BinaryTree a) a (BinaryTree a)
@@ -14,6 +16,7 @@ insert' b (Node left a right)
     | b == a = Node left a right 
     | b < a  = Node (insert' b left) a right
     | b > a  = Node left a (insert' b right)
+insert' _ Node {} = error "How did this happen???"
 
 mapTree :: (a -> b) -> BinaryTree a -> BinaryTree b
 mapTree _ Leaf = Leaf
@@ -75,3 +78,10 @@ testPostorder = if postorder testTree == [1,3,2,5,4]
 -- any traversal order is fine
 foldTree :: (a -> b -> b) -> b -> BinaryTree a -> b
 foldTree f i tree = foldr f i (inorder tree)
+
+
+main :: IO ()
+main = hspec $ 
+    describe "Binary Tree" $ 
+        it "Inserting into an Leaf should creat a tree with two Leaf branches" $
+            insert' 4 Leaf `shouldBe` Node Leaf 4 Leaf

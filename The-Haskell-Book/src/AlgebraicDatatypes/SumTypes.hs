@@ -23,7 +23,8 @@ data NumberOrBool =
 -- parentheses due to syntactic
 -- collision between (-) minus
 -- and the negate function
-myNumba= Numba (-128)
+myNumba :: NumberOrBool
+myNumba = Numba (-128)
 
 {-
 What is the cardinality of NumberOrBool?      

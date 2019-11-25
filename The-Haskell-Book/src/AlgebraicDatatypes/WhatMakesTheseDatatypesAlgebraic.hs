@@ -13,7 +13,7 @@ test = hspec $
         it "Cardinality of Int8 should be 256" $
             (abs $ fromIntegral (minBound :: Int8) :: Int16)
             + (fromIntegral (maxBound :: Int8) :: Int16)
-            + 1 `shouldBe` (2 ^ 8)
+            + 1 `shouldBe` (2 :: Int16) ^ (8 :: Int16)
 
 {-Exercises Cardinality
 1. data PugType = PugData

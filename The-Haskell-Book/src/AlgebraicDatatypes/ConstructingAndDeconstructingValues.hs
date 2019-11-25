@@ -125,21 +125,21 @@ allLanguages =
     [Haskell , Agda , Idris , PureScript]
 
 allProgrammers :: [Programmer]
-allProgrammers = [Programmer os lang | os <- allOperatingSystems, lang <- allLanguages]
+allProgrammers = [Programmer os' lang' | os' <- allOperatingSystems, lang' <- allLanguages]
 
 allProgrammers' :: [Programmer]
 allProgrammers' = Programmer <$> allOperatingSystems <*> allLanguages
 
 allProgrammers'' :: [Programmer]
 allProgrammers'' = do 
-    os <- allOperatingSystems 
-    lang <- allLanguages
-    return $ Programmer os lang
+    os' <- allOperatingSystems 
+    lang' <- allLanguages
+    return $ Programmer os' lang'
 
 allProgrammers3 :: [Programmer]
-allProgrammers3 = allOperatingSystems >>= \os -> 
-                    allLanguages >>= \lang -> 
-                    return $ Programmer os lang
+allProgrammers3 = allOperatingSystems >>= \os' -> 
+                    allLanguages >>= \lang' -> 
+                    return $ Programmer os' lang'
 
 allProgrammers4 :: [Programmer]
 allProgrammers4 = cartProd allOperatingSystems allLanguages

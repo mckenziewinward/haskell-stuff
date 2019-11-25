@@ -20,7 +20,9 @@ data Person =
     deriving (Eq, Show)
 
 -- sample data
+jm :: Person
 jm = MkPerson "julie" 108
+ca :: Person
 ca = MkPerson "chris" 16
 
 namae :: Person -> String
@@ -31,5 +33,7 @@ data Person' =
             , age :: Int }
             deriving (Eq, Show)
 
+jm' :: Person'
 jm' = Person' "julie" 108
+ca' :: Person'
 ca' = Person' "chris" 16
