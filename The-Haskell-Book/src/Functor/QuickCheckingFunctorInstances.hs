@@ -16,7 +16,7 @@ main = hspec $
         it "[Int] meets composition law" $
             property (functorCompose (+1) (*2) :: [Int] -> Bool)
         it "Generated Int -> Int functions meet composition law" $
-            property $ (functorCompose' :: IntFC)
+            property (functorCompose' :: IntFC)
 
 functorIdentity :: (Functor f, Eq (f a)) => f a -> Bool
 functorIdentity f = fmap id f == f 
