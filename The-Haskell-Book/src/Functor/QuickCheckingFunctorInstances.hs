@@ -6,7 +6,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Function
 
 type IntToInt = Fun Int Int
-type IntFc = [Int] -> IntToInt -> IntToInt -> Bool
+type IntFC = [Int] -> IntToInt -> IntToInt -> Bool
 
 main :: IO ()
 main = hspec $
@@ -15,7 +15,8 @@ main = hspec $
             property (functorIdentity :: [Int] -> Bool)
         it "[Int] meets composition law" $
             property (functorCompose (+1) (*2) :: [Int] -> Bool)
-        it "" undefined
+        it "Generated Int -> Int functions meet composition law" $
+            property $ (functorCompose' :: IntFC)
 
 functorIdentity :: (Functor f, Eq (f a)) => f a -> Bool
 functorIdentity f = fmap id f == f 
