@@ -1,6 +1,7 @@
 module Main where
 
-import Lib
+-- import Lib
+import Functor.InstancesOfFunc
 
 main :: IO ()
-main = someFunc
+main = test
