@@ -62,8 +62,8 @@ areCars = foldr ((&&) . isCar) True
     getManu :: Vehicle-> Manufacturer
     getManu = undefined
 -}
-getManu :: Vehicle -> Manufacturer
-getManu (Car m _) = m
+-- getManu :: Vehicle -> Manufacturer
+-- getManu (Car m _) = m
 {-
 4.Given that we’re returning the Manufacturer, what will happen if you use this on Plane data?
   It throws a Non-exhaustive patterns exception

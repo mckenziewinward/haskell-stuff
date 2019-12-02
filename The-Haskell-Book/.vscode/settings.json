@@ -1,0 +1,11 @@
+{
+    "languageServerHaskell.useCustomHieWrapper": true,
+    "languageServerHaskell.useCustomHieWrapperPath": "C:\\Users\\Winward\\AppData\\Roaming\\local\\bin\\hie-wrapper.exe",
+    "languageServerHaskell.enableHIE": true,
+    "languageServerHaskell.hlintOn": true,
+    "languageServerHaskell.maxNumberOfProblems": 100,
+    "languageServerHaskell.completionSnippetsOn": true,
+    "languageServerHaskell.formatOnImportOn": true,
+    "languageServerHaskell.formattingProvider": "brittany",
+    "languageServerHaskell.liquidOn": true
+}

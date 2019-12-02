@@ -2,7 +2,7 @@ module Functor.InstancesOfFunc where
 
 import Test.Hspec
 import Test.QuickCheck
-import Test.QuickCheck.Function
+import Test.QuickCheck.Function ()
 import Functor.QuickCheckingFunctorInstances hiding (main)
 
 test :: IO ()

@@ -7,7 +7,7 @@ data Possibly a =
 
 instance Functor Possibly where
     fmap f (Yeppers a) = Yeppers (f a)
-    fmap f LolNope = LolNope
+    fmap _ LolNope = LolNope
 
 --Short Exercise
 --1.Write a Functor instance for a datatype identical to Either. 
@@ -20,7 +20,7 @@ data Sum a b =
   deriving(Eq,Show)
 
 instance Functor (Sum a) where
-    fmap f (First x) = First x
+    fmap _ (First x) = First x
     fmap f (Second x) = Second (f x)
 
 --Your hint for this one is that you’re writing the following function.

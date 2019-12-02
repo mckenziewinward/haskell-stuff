@@ -30,7 +30,7 @@ data Sum b a =
 
 instance Functor (Sum e) where 
     fmap f (First a) = First (f a)
-    fmap f (Second b) = Second b
+    fmap _ (Second b) = Second b
 
 --2. 
 data Company a c b = 
@@ -61,8 +61,8 @@ data Quant a b =
   deriving (Eq, Show)
 
 instance Functor (Quant a) where
-    fmap f (Finance) = Finance
-    fmap f (Desk a) = Desk a
+    fmap _ Finance = Finance
+    fmap _ (Desk a) = Desk a
     fmap f (Bloor b) = Bloor (f b)
 
 --2.
@@ -70,7 +70,7 @@ data K a b =
     K a
 
 instance Functor (K a) where
-    fmap f (K a) = K a
+    fmap _ (K a) = K a
 
 --3.
 newtype Flip f a b = 
@@ -131,7 +131,7 @@ data List a =
   deriving (Eq, Show)
 
 instance Functor List where
-    fmap f Nil = Nil
+    fmap _ Nil = Nil
     fmap f (Cons a as) = Cons (f a) (fmap f as)
 
 --10.
@@ -144,7 +144,7 @@ data GoatLord a =
   deriving (Eq, Show)
 
 instance Functor GoatLord where
-    fmap f NoGoat = NoGoat
+    fmap _ NoGoat = NoGoat
     fmap f (OneGoat a) = OneGoat (f a)
     fmap f (MoreGoats a b c) = 
         MoreGoats (fmap f a) (fmap f b) (fmap f c)
@@ -156,6 +156,6 @@ data TalkToMe a =
   | Read (String -> a)
 
 instance Functor TalkToMe where
-    fmap f Halt = Halt
+    fmap _ Halt = Halt
     fmap f (Print s a) = Print s (f a)
-    fmap f (Read sa) = Read (\s -> f (sa s))
+    fmap f (Read sa) = Read (f . sa)

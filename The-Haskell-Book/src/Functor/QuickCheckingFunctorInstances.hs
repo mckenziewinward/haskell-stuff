@@ -3,7 +3,7 @@ module Functor.QuickCheckingFunctorInstances where
 
 import Test.Hspec
 import Test.QuickCheck
-import Test.QuickCheck.Function
+import Test.QuickCheck.Function ()
 
 type IntToInt = Fun Int Int
 type IntFC = [Int] -> IntToInt -> IntToInt -> Bool

@@ -84,4 +84,4 @@ main :: IO ()
 main = hspec $ 
     describe "Binary Tree" $ 
         it "Inserting into an Leaf should creat a tree with two Leaf branches" $
-            insert' 4 Leaf `shouldBe` Node Leaf 4 Leaf
+            insert' (4 :: Int) Leaf `shouldBe` Node Leaf (4 :: Int) Leaf
