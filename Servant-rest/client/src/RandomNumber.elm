@@ -36,7 +36,7 @@ update msg model =
 main : Program () Model Msg
 main =
     Browser.element
-        { init = \flags -> ( initialModel, Cmd.none )
+        { init = \_ -> ( initialModel, Cmd.none )
         , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
